@@ -29,9 +29,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 | Benchmark Scenario | `monoio-pg` (Avg) | `tokio-postgres` (Avg) | Speedup |
 | :--- | :--- | :--- | :--- |
-| **Small Query** (`SELECT 1`) | **3.30 ms** | 7.20 ms | **2.18x Faster** |
-| **Wide Row** (10 columns) | **3.80 ms** | 7.92 ms | **2.08x Faster** |
-| **Large Result** (100 rows) | **4.93 ms** | 8.70 ms | **1.76x Faster** |
+| **Small Query** (`SELECT 1`) | **2.19 ms** | 6.16 ms | **2.81x Faster** |
+| **Wide Row** (10 columns) | **2.72 ms** | 6.87 ms | **2.52x Faster** |
+| **Large Result** (100 rows) | **3.97 ms** | 7.38 ms | **1.85x Faster** |
 
 ### Visual Comparison (Lower is Better)
 
@@ -40,16 +40,16 @@ Postgres Query Performance (100 iterations)
 -------------------------------------------
 
 Small Query (SELECT 1)
-monoio-pg      [#############] 3.30ms
-tokio-postgres [############################] 7.20ms
+monoio-pg      [########] 2.19ms
+tokio-postgres [########################] 6.16ms
 
 Wide Row (10 columns)
-monoio-pg      [###############] 3.80ms
-tokio-postgres [###############################] 7.92ms
+monoio-pg      [#########] 2.72ms
+tokio-postgres [###########################] 6.87ms
 
 Large Result (100 rows)
-monoio-pg      [####################] 4.93ms
-tokio-postgres [###################################] 8.70ms
+monoio-pg      [###############] 3.97ms
+tokio-postgres [#############################] 7.38ms
 ```
 
 > Benchmarks performed on a thread-per-core configuration comparing `monoio` with the `Fusion` driver vs `tokio`.
