@@ -16,6 +16,7 @@ use subtle::ConstantTimeEq;
 
 pub struct Connection {
     framed: Framed<TcpStream, PostgresCodec>,
+    write_buf: BytesMut,
 }
 
 impl Connection {
@@ -26,6 +27,9 @@ impl Connection {
         database: Option<&str>,
     ) -> Result<Self> {
         let stream = TcpStream::connect(addr).await?;
+        stream
+            .set_nodelay(true)
+            .map_err(|e| Error::Other(e.to_string()))?;
         let mut framed = Framed::new(stream, PostgresCodec);
 
         // 1. Send Startup Message
@@ -67,7 +71,7 @@ impl Connection {
         // 2. Handle Authentication
         let mut scram_state: Option<(auth::ScramClient, [u8; 32])> = None;
         loop {
-            let msg = framed.next().await.ok_or(Error::Closed)??;
+            let (msg, _) = framed.next().await.ok_or(Error::Closed)??;
             match msg {
                 backend::Message::AuthenticationOk => {}
                 backend::Message::AuthenticationCleartextPassword => {
@@ -183,12 +187,15 @@ impl Connection {
             }
         }
 
-        Ok(Self { framed })
+        Ok(Self {
+            framed,
+            write_buf: BytesMut::with_capacity(4096),
+        })
     }
 
     pub async fn query(&mut self, query: &str) -> Result<Vec<Row>> {
-        let mut buf = BytesMut::new();
-        frontend::parse("", query, std::iter::empty(), &mut buf)
+        self.write_buf.clear();
+        frontend::parse("", query, std::iter::empty(), &mut self.write_buf)
             .map_err(|e| Error::Protocol(e.to_string()))?;
         // Note: formats = format codes for bound parameters. We have no parameters.
         // result_formats = format codes for results. We use 1 (binary).
@@ -204,14 +211,14 @@ impl Connection {
                 Box<dyn std::error::Error + Sync + Send>,
             > { Ok(postgres_protocol::IsNull::Yes) },
             std::iter::once(1),
-            &mut buf,
+            &mut self.write_buf,
         )
         .map_err(|_| Error::Protocol("Bind error".to_string()))?;
-        frontend::describe(b'P', "", &mut buf).map_err(|e| Error::Protocol(e.to_string()))?;
-        frontend::execute("", 0, &mut buf).map_err(|e| Error::Protocol(e.to_string()))?;
-        frontend::sync(&mut buf);
+        frontend::describe(b'P', "", &mut self.write_buf).map_err(|e| Error::Protocol(e.to_string()))?;
+        frontend::execute("", 0, &mut self.write_buf).map_err(|e| Error::Protocol(e.to_string()))?;
+        frontend::sync(&mut self.write_buf);
         self.framed
-            .send(buf)
+            .send(self.write_buf.split())
             .await
             .map_err(|e| Error::Other(e.to_string()))?;
         self.framed
@@ -223,7 +230,7 @@ impl Connection {
         let mut columns = Arc::new(Vec::new());
         let mut error = None;
         loop {
-            let msg = self.framed.next().await.ok_or(Error::Closed)??;
+            let (msg, raw) = self.framed.next().await.ok_or(Error::Closed)??;
             match msg {
                 backend::Message::RowDescription(body) => {
                     let mut cols = Vec::new();
@@ -243,19 +250,20 @@ impl Connection {
                     }
                     columns = Arc::new(cols);
                 }
-                backend::Message::DataRow(body) => {
-                    let mut data = Vec::new();
-                    let mut ranges = body.ranges();
-                    while let Some(range) = FallibleIterator::next(&mut ranges)
-                        .map_err(|e: std::io::Error| Error::Protocol(e.to_string()))?
-                    {
-                        let buf = match range {
-                            Some(r) => Some(bytes::Bytes::copy_from_slice(
-                                &body.buffer()[r.start..r.end],
-                            )),
-                            None => None,
-                        };
-                        data.push(buf);
+                backend::Message::DataRow(_) => {
+                    let col_count = columns.len();
+                    let mut data = Vec::with_capacity(col_count);
+                    let mut cursor = 7; // tag(1) + len(4) + col_count(2)
+                    for _ in 0..col_count {
+                        let len = i32::from_be_bytes([raw[cursor], raw[cursor + 1], raw[cursor + 2], raw[cursor + 3]]);
+                        cursor += 4;
+                        if len == -1 {
+                            data.push(None);
+                        } else {
+                            let len = len as usize;
+                            data.push(Some(raw.slice(cursor..cursor + len)));
+                            cursor += len;
+                        }
                     }
 
                     rows.push(Row {
@@ -288,10 +296,10 @@ impl Connection {
     }
 
     pub async fn execute(&mut self, query: &str) -> Result<()> {
-        let mut buf = BytesMut::new();
-        frontend::query(query, &mut buf).map_err(|e| Error::Protocol(e.to_string()))?;
+        self.write_buf.clear();
+        frontend::query(query, &mut self.write_buf).map_err(|e| Error::Protocol(e.to_string()))?;
         self.framed
-            .send(buf)
+            .send(self.write_buf.split())
             .await
             .map_err(|e| Error::Other(e.to_string()))?;
         self.framed
@@ -301,7 +309,7 @@ impl Connection {
 
         let mut error = None;
         loop {
-            let msg = self.framed.next().await.ok_or(Error::Closed)??;
+            let (msg, _raw) = self.framed.next().await.ok_or(Error::Closed)??;
             match msg {
                 backend::Message::ReadyForQuery(_) => break,
                 backend::Message::ErrorResponse(body) => {
@@ -326,12 +334,12 @@ impl Connection {
     }
 
     pub async fn prepare(&mut self, name: &str, query: &str) -> Result<()> {
-        let mut buf = BytesMut::new();
-        frontend::parse(name, query, std::iter::empty(), &mut buf)
+        self.write_buf.clear();
+        frontend::parse(name, query, std::iter::empty(), &mut self.write_buf)
             .map_err(|e| Error::Protocol(e.to_string()))?;
-        frontend::sync(&mut buf);
+        frontend::sync(&mut self.write_buf);
         self.framed
-            .send(buf)
+            .send(self.write_buf.split())
             .await
             .map_err(|e| Error::Other(e.to_string()))?;
         self.framed
@@ -341,7 +349,7 @@ impl Connection {
 
         let mut error = None;
         loop {
-            let msg = self.framed.next().await.ok_or(Error::Closed)??;
+            let (msg, raw) = self.framed.next().await.ok_or(Error::Closed)??;
             match msg {
                 backend::Message::ParseComplete => {}
                 backend::Message::ReadyForQuery(_) => break,

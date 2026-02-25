@@ -1,12 +1,12 @@
 use crate::error::{Error, Result};
-use bytes::BytesMut;
+use bytes::{Bytes, BytesMut};
 use monoio_codec::{Decoder, Encoder};
 use postgres_protocol::message::backend;
 
 pub struct PostgresCodec;
 
 impl Decoder for PostgresCodec {
-    type Item = backend::Message;
+    type Item = (backend::Message, Bytes);
     type Error = Error;
 
     fn decode(&mut self, src: &mut BytesMut) -> Result<monoio_codec::Decoded<Self::Item>> {
@@ -14,7 +14,6 @@ impl Decoder for PostgresCodec {
             return Ok(monoio_codec::Decoded::Insufficient);
         }
 
-        let _tag = src[0];
         let len = i32::from_be_bytes([src[1], src[2], src[3], src[4]]) as usize;
 
         if src.len() < len + 1 {
@@ -22,8 +21,9 @@ impl Decoder for PostgresCodec {
         }
 
         let mut data = src.split_to(len + 1);
+        let raw = data.clone().freeze();
         match backend::Message::parse(&mut data) {
-            Ok(Some(msg)) => Ok(monoio_codec::Decoded::Some(msg)),
+            Ok(Some(msg)) => Ok(monoio_codec::Decoded::Some((msg, raw))),
             Ok(None) => Ok(monoio_codec::Decoded::Insufficient),
             Err(e) => Err(Error::Protocol(e.to_string())),
         }
@@ -34,7 +34,7 @@ impl Encoder<BytesMut> for PostgresCodec {
     type Error = Error;
 
     fn encode(&mut self, item: BytesMut, dst: &mut BytesMut) -> Result<()> {
-        dst.extend_from_slice(&item);
+        dst.unsplit(item);
         Ok(())
     }
 }
@@ -47,9 +47,9 @@ mod tests {
     fn test_codec_decode_ready_for_query() {
         let mut codec = PostgresCodec;
         let mut src = BytesMut::from(&b"Z\x00\x00\x00\x05I"[..]);
-        let msg = codec.decode(&mut src).unwrap();
-        match msg {
-            monoio_codec::Decoded::Some(backend::Message::ReadyForQuery(_)) => {}
+        let res = codec.decode(&mut src).unwrap();
+        match res {
+            monoio_codec::Decoded::Some((backend::Message::ReadyForQuery(_), _)) => {}
             _ => panic!("Expected ReadyForQuery"),
         }
     }
