@@ -1,7 +1,7 @@
+use crate::error::{Error, Result};
 use bytes::BytesMut;
 use monoio_codec::{Decoder, Encoder};
 use postgres_protocol::message::backend;
-use crate::error::{Error, Result};
 
 pub struct PostgresCodec;
 

@@ -1,8 +1,8 @@
-use md5::Md5;
-use sha2::{Sha256, Digest};
-use hmac::{Hmac, Mac};
-use base64::{engine::general_purpose::STANDARD as BASE64, Engine};
 use crate::error::{Error, Result};
+use base64::{Engine, engine::general_purpose::STANDARD as BASE64};
+use hmac::{Hmac, Mac};
+use md5::Md5;
+use sha2::{Digest, Sha256};
 
 pub fn md5_encrypt(user: &str, password: &str, salt: &[u8]) -> String {
     let mut hasher = Md5::new();
@@ -46,25 +46,38 @@ impl ScramClient {
         let mut i = None;
 
         for part in server_first.split(',') {
-            if part.starts_with("r=") { r = Some(&part[2..]); }
-            else if part.starts_with("s=") { s = Some(&part[2..]); }
-            else if part.starts_with("i=") { i = Some(&part[2..]); }
+            if part.starts_with("r=") {
+                r = Some(&part[2..]);
+            } else if part.starts_with("s=") {
+                s = Some(&part[2..]);
+            } else if part.starts_with("i=") {
+                i = Some(&part[2..]);
+            }
         }
 
         let r = r.ok_or(Error::Authentication("Missing r in SCRAM".into()))?;
         let s = s.ok_or(Error::Authentication("Missing s in SCRAM".into()))?;
-        let i = i.ok_or(Error::Authentication("Missing i in SCRAM".into()))?.parse::<u32>().map_err(|_| Error::Authentication("Invalid i".into()))?;
+        let i = i
+            .ok_or(Error::Authentication("Missing i in SCRAM".into()))?
+            .parse::<u32>()
+            .map_err(|_| Error::Authentication("Invalid i".into()))?;
 
-        let salt = BASE64.decode(s).map_err(|_| Error::Authentication("Invalid s base64".into()))?;
+        let salt = BASE64
+            .decode(s)
+            .map_err(|_| Error::Authentication("Invalid s base64".into()))?;
 
         let mut salted_password = [0u8; 32];
-        pbkdf2::<Hmac<Sha256>>(self.password.as_bytes(), &salt, i, &mut salted_password).map_err(|e| Error::Authentication(e.to_string()))?;
+        pbkdf2::<Hmac<Sha256>>(self.password.as_bytes(), &salt, i, &mut salted_password)
+            .map_err(|e| Error::Authentication(e.to_string()))?;
 
         let client_key = hmac_sha256(&salted_password, b"Client Key");
         let stored_key = Sha256::digest(&client_key);
 
         let client_final_message_without_proof = format!("c=biws,r={}", r);
-        let auth_message = format!("{},{},{}", self.client_first_message_bare, server_first, client_final_message_without_proof);
+        let auth_message = format!(
+            "{},{},{}",
+            self.client_first_message_bare, server_first, client_final_message_without_proof
+        );
 
         let client_signature = hmac_sha256(&stored_key, auth_message.as_bytes());
 
@@ -77,7 +90,10 @@ impl ScramClient {
         let server_key = hmac_sha256(&salted_password, b"Server Key");
         let server_signature = hmac_sha256(&server_key, auth_message.as_bytes());
 
-        Ok((format!("{},p={}", client_final_message_without_proof, proof_base64), server_signature))
+        Ok((
+            format!("{},p={}", client_final_message_without_proof, proof_base64),
+            server_signature,
+        ))
     }
 }
 

@@ -2,14 +2,23 @@ use monoio_pg::pool::Pool;
 
 #[monoio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let pool = Pool::new("127.0.0.1:5432", "postgres", Some("password"), Some("postgres"));
+    let pool = Pool::new(
+        "127.0.0.1:5432",
+        "postgres",
+        Some("password"),
+        Some("postgres"),
+    );
 
     // 1. Get a client from the pool
     let mut client = pool.get().await?;
 
     // 2. Execute a simple query
-    client.execute("CREATE TABLE IF NOT EXISTS test (id INT, name TEXT)").await?;
-    client.execute("INSERT INTO test (id, name) VALUES (1, 'monoio')").await?;
+    client
+        .execute("CREATE TABLE IF NOT EXISTS test (id INT, name TEXT)")
+        .await?;
+    client
+        .execute("INSERT INTO test (id, name) VALUES (1, 'monoio')")
+        .await?;
 
     // 3. Run a query and get rows
     let rows = client.query("SELECT id, name FROM test").await?;

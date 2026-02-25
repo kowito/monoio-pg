@@ -1,14 +1,19 @@
-use std::sync::Arc;
-use bytes::Bytes;
-use crate::error::Result;
 use crate::connection::Connection;
+use crate::error::Result;
+use bytes::Bytes;
+use std::sync::Arc;
 
 pub struct Client {
     connection: Connection,
 }
 
 impl Client {
-    pub async fn connect(addr: &str, user: &str, password: Option<&str>, database: Option<&str>) -> Result<Self> {
+    pub async fn connect(
+        addr: &str,
+        user: &str,
+        password: Option<&str>,
+        database: Option<&str>,
+    ) -> Result<Self> {
         let connection = Connection::connect(addr, user, password, database).await?;
         Ok(Self { connection })
     }
@@ -42,11 +47,13 @@ pub struct Row {
 
 impl Row {
     pub fn get<'a, T: FromSql<'a>>(&'a self, index: usize) -> Result<T> {
-        let col = self.columns.get(index).ok_or_else(|| crate::error::Error::Parse(format!("Column index {} out of bounds", index)))?;
+        let col = self.columns.get(index).ok_or_else(|| {
+            crate::error::Error::Parse(format!("Column index {} out of bounds", index))
+        })?;
         let bytes = self.get_raw(index);
-        
+
         let ty = Type::from_oid(col.type_oid).unwrap_or(Type::UNKNOWN);
-        
+
         match bytes {
             Some(b) => T::from_sql(&ty, b).map_err(|e| crate::error::Error::Parse(e.to_string())),
             None => T::from_sql_null(&ty).map_err(|e| crate::error::Error::Parse(e.to_string())),

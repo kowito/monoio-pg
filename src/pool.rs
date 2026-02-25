@@ -1,7 +1,7 @@
-use std::cell::RefCell;
-use std::collections::VecDeque;
 use crate::client::Client;
 use crate::error::Result;
+use std::cell::RefCell;
+use std::collections::VecDeque;
 
 thread_local! {
     static POOL: RefCell<VecDeque<Client>> = RefCell::new(VecDeque::new());
@@ -28,7 +28,13 @@ impl Pool {
         if let Some(client) = POOL.with(|p| p.borrow_mut().pop_front()) {
             return Ok(client);
         }
-        Client::connect(&self.addr, &self.user, self.password.as_deref(), self.database.as_deref()).await
+        Client::connect(
+            &self.addr,
+            &self.user,
+            self.password.as_deref(),
+            self.database.as_deref(),
+        )
+        .await
     }
 
     pub fn put(&self, client: Client) {
