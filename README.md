@@ -23,6 +23,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 ```
 
+## Roadmap
+
+The goal of `monoio-pg` is to become the fastest, most reliable PostgreSQL driver for the Rust ecosystem.
+
+- [ ] **TLS Support**: Integration with `native-tls` and `rustls`.
+- [ ] **Transaction Management**: Support for nested transactions and savepoints.
+- [ ] **Statement Caching**: Automatic server-side prepared statement management.
+- [ ] **Copy Protocol**: High-performance data ingestion with `COPY`.
+- [ ] **Notifications**: Support for `LISTEN` and `NOTIFY`.
+- [ ] **Portal Support**: Partial result fetching and cursors.
+- [ ] **Complex Types**: Native support for JSONB, Arrays, and Range types.
+- [ ] **Benchmarks**: Comprehensive performance comparisons against `tokio-postgres`.
+
 ## License
 
 WTFPL
