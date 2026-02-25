@@ -2,6 +2,14 @@
 name = "monoio-pg"
 version = "0.1.0"
 edition = "2024"
+authors = ["kowito <hi@kowito.com>"]
+description = "High-performance asynchronous PostgreSQL driver for monoio"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/kowito/monoio-pg"
+readme = "README.md"
+keywords = ["postgres", "monoio", "async", "database", "driver"]
+categories = ["database", "asynchronous"]
+
 
 [dependencies]
 monoio = "0.2"
