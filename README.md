@@ -14,6 +14,9 @@ High-performance asynchronous PostgreSQL driver for the `monoio` runtime.
 - **Thread-per-core**: Optimized for high-throughput, low-latency performance in a thread-per-core architecture.
 - **Handshake & Auth**: Supports standard PostgreSQL handshake and authentication (including SCRAM-SHA-256).
 - **Extended Query Protocol**: Full support for `parse`, `bind`, and `execute`.
+- **Zero-Copy Architecture**: Minimized memory allocations and data copying during query processing.
+- **Implicit Statement Caching**: Automatically reuses parsed statements and row descriptions for maximum efficiency.
+- **Automatic CI/CD**: Fully automated versioning and publishing to crates.io on every push.
 
 ## Usage
 
@@ -64,13 +67,14 @@ Large Result (100 rows)
 
 The goal of `monoio-pg` is to become the fastest, most reliable PostgreSQL driver for the Rust ecosystem.
 
+- [x] **Benchmarks**: Comprehensive performance comparisons against `tokio-postgres`.
+- [x] **Statement Caching**: Implicit management of prepared statements and row descriptions.
 - [ ] **TLS Support**: Integration with `native-tls` and `rustls`.
 - [ ] **Transaction Management**: Support for nested transactions and savepoints.
 - [ ] **Copy Protocol**: High-performance data ingestion with `COPY`.
 - [ ] **Notifications**: Support for `LISTEN` and `NOTIFY`.
 - [ ] **Portal Support**: Partial result fetching and cursors.
 - [ ] **Complex Types**: Native support for JSONB, Arrays, and Range types.
-- [ ] **Benchmarks**: Comprehensive performance comparisons against `tokio-postgres`.
 
 ## Contributing
 
