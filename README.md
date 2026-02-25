@@ -72,6 +72,10 @@ The goal of `monoio-pg` is to become the fastest, most reliable PostgreSQL drive
 - [ ] **Complex Types**: Native support for JSONB, Arrays, and Range types.
 - [ ] **Benchmarks**: Comprehensive performance comparisons against `tokio-postgres`.
 
+## Contributing
+
+Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+
 ## License
 
 WTFPL
