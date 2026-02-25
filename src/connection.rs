@@ -11,12 +11,21 @@ use monoio::net::TcpStream;
 use monoio_codec::Framed;
 use postgres_protocol::message::backend;
 use postgres_protocol::message::frontend;
+use std::collections::HashMap;
 use std::sync::Arc;
 use subtle::ConstantTimeEq;
+
+#[derive(Clone)]
+struct CachedStatement {
+    name: String,
+    columns: Arc<Vec<Column>>,
+}
 
 pub struct Connection {
     framed: Framed<TcpStream, PostgresCodec>,
     write_buf: BytesMut,
+    statement_cache: HashMap<String, CachedStatement>,
+    next_stmt_id: usize,
 }
 
 impl Connection {
@@ -190,18 +199,30 @@ impl Connection {
         Ok(Self {
             framed,
             write_buf: BytesMut::with_capacity(4096),
+            statement_cache: HashMap::new(),
+            next_stmt_id: 1,
         })
     }
 
     pub async fn query(&mut self, query: &str) -> Result<Vec<Row>> {
         self.write_buf.clear();
-        frontend::parse("", query, std::iter::empty(), &mut self.write_buf)
-            .map_err(|e| Error::Protocol(e.to_string()))?;
+
+        let cached = self.statement_cache.get(query).cloned();
+        let name = if let Some(ref stmt) = cached {
+            stmt.name.clone()
+        } else {
+            let n = format!("s{}", self.next_stmt_id);
+            self.next_stmt_id += 1;
+            frontend::parse(&n, query, std::iter::empty(), &mut self.write_buf)
+                .map_err(|e| Error::Protocol(e.to_string()))?;
+            n
+        };
+
         // Note: formats = format codes for bound parameters. We have no parameters.
         // result_formats = format codes for results. We use 1 (binary).
         frontend::bind(
             "",
-            "",
+            &name,
             std::iter::empty::<i16>(),
             std::iter::empty::<i32>(),
             |_: i32,
@@ -214,7 +235,11 @@ impl Connection {
             &mut self.write_buf,
         )
         .map_err(|_| Error::Protocol("Bind error".to_string()))?;
-        frontend::describe(b'P', "", &mut self.write_buf).map_err(|e| Error::Protocol(e.to_string()))?;
+
+        if cached.is_none() {
+            frontend::describe(b'P', "", &mut self.write_buf).map_err(|e| Error::Protocol(e.to_string()))?;
+        }
+
         frontend::execute("", 0, &mut self.write_buf).map_err(|e| Error::Protocol(e.to_string()))?;
         frontend::sync(&mut self.write_buf);
         self.framed
@@ -227,7 +252,11 @@ impl Connection {
             .map_err(|e| Error::Other(e.to_string()))?;
 
         let mut rows = Vec::new();
-        let mut columns = Arc::new(Vec::new());
+        let mut columns = if let Some(ref stmt) = cached {
+            stmt.columns.clone()
+        } else {
+            Arc::new(Vec::new())
+        };
         let mut error = None;
         loop {
             let (msg, raw) = self.framed.next().await.ok_or(Error::Closed)??;
@@ -249,6 +278,22 @@ impl Connection {
                         });
                     }
                     columns = Arc::new(cols);
+                    self.statement_cache.insert(
+                        query.to_string(),
+                        CachedStatement {
+                            name: name.clone(),
+                            columns: columns.clone(),
+                        },
+                    );
+                }
+                backend::Message::NoData => {
+                    self.statement_cache.insert(
+                        query.to_string(),
+                        CachedStatement {
+                            name: name.clone(),
+                            columns: columns.clone(),
+                        },
+                    );
                 }
                 backend::Message::DataRow(_) => {
                     let col_count = columns.len();
