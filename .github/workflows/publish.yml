@@ -44,7 +44,8 @@ jobs:
         run: |
           git config --local user.email "hi@kowito.com"
           git config --local user.name "kowito"
-          git add Cargo.toml
+          cargo update --offline
+          git add Cargo.toml Cargo.lock
           git commit -m "chore: bump version to ${{ steps.bump.outputs.version }} [skip ci]"
           git push
 
