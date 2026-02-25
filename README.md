@@ -1,5 +1,10 @@
 # monoio-pg
 
+[![Crates.io](https://img.shields.io/crates/v/monoio-pg.svg)](https://crates.io/crates/monoio-pg)
+[![Docs.rs](https://docs.rs/monoio-pg/badge.svg)](https://docs.rs/monoio-pg)
+[![License](https://img.shields.io/badge/license-WTFPL-blue.svg)](https://github.com/kowito/monoio-pg/blob/main/LICENSE)
+[![CI](https://github.com/kowito/monoio-pg/actions/workflows/publish.yml/badge.svg)](https://github.com/kowito/monoio-pg/actions)
+
 High-performance asynchronous PostgreSQL driver for the `monoio` runtime.
 
 ## Features
