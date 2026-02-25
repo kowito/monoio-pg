@@ -349,7 +349,7 @@ impl Connection {
 
         let mut error = None;
         loop {
-            let (msg, raw) = self.framed.next().await.ok_or(Error::Closed)??;
+            let (msg, _raw) = self.framed.next().await.ok_or(Error::Closed)??;
             match msg {
                 backend::Message::ParseComplete => {}
                 backend::Message::ReadyForQuery(_) => break,
