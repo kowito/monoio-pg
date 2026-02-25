@@ -1,6 +1,7 @@
 # monoio-pg
 
 [![Crates.io](https://img.shields.io/crates/v/monoio-pg.svg)](https://crates.io/crates/monoio-pg)
+[![Downloads](https://img.shields.io/crates/d/monoio-pg.svg)](https://crates.io/crates/monoio-pg)
 [![Docs.rs](https://docs.rs/monoio-pg/badge.svg)](https://docs.rs/monoio-pg)
 [![Rust Version](https://img.shields.io/badge/rust-1.85%2B-blue.svg)](https://github.com/kowito/monoio-pg)
 [![License](https://img.shields.io/badge/license-WTFPL-blue.svg)](https://github.com/kowito/monoio-pg/blob/main/LICENSE)
