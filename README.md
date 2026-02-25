@@ -39,23 +39,23 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 | **Wide Row** (10 columns) | **2.08 ms** | 7.10 ms | **3.41x Faster** |
 | **Large Result** (100 rows) | **3.59 ms** | 7.93 ms | **2.20x Faster** |
 
-### Visual Comparison (Lower is Better)
+### Visual Comparison (Higher is Better)
 
 ```text
-Postgres Query Performance (100 iterations)
--------------------------------------------
+Postgres Query Throughput (Higher is Better)
+--------------------------------------------
 
 Small Query (SELECT 1)
-monoio-pg      [#######] 1.97ms
-tokio-postgres [#########################] 6.57ms
+  monoio-pg      ████████████████████      50,761 req/s
+  tokio-postgres ██████                    15,220 req/s
 
 Wide Row (10 columns)
-monoio-pg      [#######] 2.08ms
-tokio-postgres [###########################] 7.10ms
+  monoio-pg      ████████████████████      48,076 req/s
+  tokio-postgres ██████                    14,084 req/s
 
 Large Result (100 rows)
-monoio-pg      [#############] 3.59ms
-tokio-postgres [#############################] 7.93ms
+  monoio-pg      ███████████               27,855 req/s
+  tokio-postgres █████                     12,610 req/s
 ```
 
 > Benchmarks performed on a thread-per-core configuration comparing `monoio` with the `Fusion` driver vs `tokio`.
@@ -66,7 +66,6 @@ The goal of `monoio-pg` is to become the fastest, most reliable PostgreSQL drive
 
 - [ ] **TLS Support**: Integration with `native-tls` and `rustls`.
 - [ ] **Transaction Management**: Support for nested transactions and savepoints.
-- [ ] **Statement Caching**: Automatic server-side prepared statement management.
 - [ ] **Copy Protocol**: High-performance data ingestion with `COPY`.
 - [ ] **Notifications**: Support for `LISTEN` and `NOTIFY`.
 - [ ] **Portal Support**: Partial result fetching and cursors.
