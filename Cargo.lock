@@ -339,7 +339,6 @@ dependencies = [
  "futures-sink",
  "futures-task",
  "pin-project-lite",
- "slab",
 ]
 
 [[package]]
@@ -597,22 +596,18 @@ dependencies = [
 
 [[package]]
 name = "monoio-pg"
-version = "0.1.4"
+version = "0.1.5"
 dependencies = [
  "base64",
- "byteorder",
  "bytes",
  "criterion",
  "fallible-iterator",
- "futures-util",
  "hex",
  "hmac",
  "md-5",
  "monoio",
  "monoio-codec",
  "pbkdf2",
- "percent-encoding",
- "pin-project-lite",
  "postgres-protocol",
  "postgres-types",
  "rand 0.8.5",
@@ -1075,12 +1070,6 @@ name = "siphasher"
 version = "1.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b2aa850e253778c88a04c3d7323b043aeda9d3e30d5971937c1855769763678e"
-
-[[package]]
-name = "slab"
-version = "0.4.12"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0c790de23124f9ab44544d7ac05d60440adc586479ce501c1d6d7da3cd8c9cf5"
 
 [[package]]
 name = "smallvec"

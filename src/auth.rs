@@ -9,13 +9,23 @@ pub fn md5_encrypt(user: &str, password: &str, salt: &[u8]) -> String {
     hasher.update(password.as_bytes());
     hasher.update(user.as_bytes());
     let res1 = hasher.finalize();
-    let res1_hex = hex::encode(res1);
+    let res1_hex = hex_encode(&res1);
 
     let mut hasher = Md5::new();
     hasher.update(res1_hex.as_bytes());
     hasher.update(salt);
     let res2 = hasher.finalize();
-    format!("md5{}", hex::encode(res2))
+    format!("md5{}", hex_encode(&res2))
+}
+
+fn hex_encode(data: &[u8]) -> String {
+    const HEX_CHARS: &[u8] = b"0123456789abcdef";
+    let mut s = String::with_capacity(data.len() * 2);
+    for &b in data {
+        s.push(HEX_CHARS[(b >> 4) as usize] as char);
+        s.push(HEX_CHARS[(b & 0xf) as usize] as char);
+    }
+    s
 }
 
 use pbkdf2::pbkdf2;
@@ -27,7 +37,7 @@ pub struct ScramClient {
 
 impl ScramClient {
     pub fn new(user: &str, password: &str) -> Self {
-        let nonce = hex::encode(rand::random::<[u8; 16]>());
+        let nonce = hex_encode(&rand::random::<[u8; 16]>());
         let user_escaped = user.replace("=", "=3D").replace(",", "=2C");
         let client_first_message_bare = format!("n={},r={}", user_escaped, nonce);
         Self {
